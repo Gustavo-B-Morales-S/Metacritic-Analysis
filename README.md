@@ -1,12 +1,12 @@
 # Metacritic-Analysis
 
-**Metacritic-Analysis** is a data pipeline designed to scrape, parse, transform, and analyze information from the Metacritic website. This pipeline retrieves data about movies and games, saves it locally in a MongoDB instance to reduce latency, processes the raw data into JSON files, and uploads it to an AWS S3 bucket in two layers: raw and cleansed. The entire workflow is managed using Astronomer’s CLI within a Dockerized environment, with dependency management via Poetry.
+**Metacritic-Analysis** is a data pipeline designed to scrape, parse, transform, and analyze information from the Metacritic website. This pipeline retrieves data about movies and games, saves it locally in a MongoDB instance to reduce latency, processes the raw data into JSON and Parquet files, and uploads it to an AWS S3 bucket in two layers: raw and cleansed. The entire workflow is managed using Astronomer’s CLI within a Dockerized environment, with dependency management via Poetry.
 
 ## Project Overview
 
 - **Data Collection**: Fetches data from Metacritic’s browse pages for movies and games.
 - **Data Storage**: Saves HTML data locally in MongoDB to optimize scraping performance and provide recoverability.
-- **Data Parsing and Transformation**: Extracts and cleans relevant information, stores raw data as JSON in S3, and applies cleansing transformations.
+- **Data Parsing and Transformation**: Extracts and cleans relevant information, uses AWS S3, storing raw data as JSON, and applies cleaning transformations and storing it as Parquet.
 - **Pipeline Management**: Orchestrated by Airflow, with Astronomer CLI handling the runtime environment, and dependencies managed by Poetry.
 
 ## Architecture
@@ -27,14 +27,12 @@
 │   └── pipeline_dag.py             # Main DAG file
 ├── docker-compose.yml              # Docker Compose for services
 ├── Dockerfile                      # Astronomer Dockerfile for runtime
-├── include                         # Additional files for Airflow
-├── plugins                         # Custom plugins for Airflow
 ├── poetry.lock                     # Poetry lock file
 ├── pyproject.toml                  # Poetry configuration file
 ├── README.md                       # Project documentation
 ├── src                             # Source files
 │   ├── core                        # Core modules and configurations
-│   │   ├── agents.py
+│   │   ├── agents.py               # User Agent Handling
 │   │   ├── contracts.py            # Data models and interfaces
 │   │   ├── requester.py            # Request handling
 │   │   ├── settings.py             # Core settings
@@ -111,11 +109,11 @@ The Airflow DAG, `pipeline_dag.py`, will manage the data extraction, parsing, an
 
 1. **Data Extraction**: Crawls Metacritic’s browse pages and saves HTML data in MongoDB.
 2. **Parsing and Transformation**: Parses HTML content, extracts fields like ratings, genres, and platforms, then transforms raw data for upload.
-3. **Data Upload to S3**: Saves JSON data to the S3 raw layer, applies cleansing, and stores it in the cleansed layer.
+3. **Data Upload to S3**: Saves JSON data to the S3 raw layer, applies cleansing, and stores it as Parquet in the cleansed layer.
 
 ### Accessing the Data
 
-Raw and cleansed JSON files are available in S3, providing an easily accessible format for downstream analysis.
+Raw JSON and cleansed Parquet files are available in S3, providing an easily accessible format for downstream analysis.
 
 ## Configuration
 
