@@ -1,7 +1,3 @@
-Below is an updated README.md that reflects the project structure, package manager, and new project name: **Metacritic-Analysis**.
-
----
-
 # Metacritic-Analysis
 
 **Metacritic-Analysis** is a data pipeline designed to scrape, parse, transform, and analyze information from the Metacritic website. This pipeline retrieves data about movies and games, saves it locally in a MongoDB instance to reduce latency, processes the raw data into JSON files, and uploads it to an AWS S3 bucket in two layers: raw and cleansed. The entire workflow is managed using Astronomer’s CLI within a Dockerized environment, with dependency management via Poetry.
