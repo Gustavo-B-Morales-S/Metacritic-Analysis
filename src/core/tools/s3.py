@@ -17,8 +17,24 @@ from src.core.settings import s3_settings
 
 
 class S3Client:
+    '''
+    A client for handling interactions with an S3 bucket, including uploading JSON and Parquet files.
+
+    Args:
+        bucket_name (str): The name of the S3 bucket.
+
+    Attributes:
+        _bucket_name (str): The S3 bucket name.
+        _s3 (boto3.client): The boto3 S3 client instance.
+    '''
 
     def __init__(self, bucket_name: str = s3_settings.bucket_name) -> None:
+        '''
+        Initializes the S3Client instance with the specified bucket name.
+
+        Args:
+            bucket_name (str): The name of the S3 bucket.
+        '''
         self._bucket_name = bucket_name
         self._s3 = boto3.client('s3')
 
@@ -29,6 +45,18 @@ class S3Client:
         file_name: str | Literal['unknown'] = 'unknown',
         file_extension: str | Literal['txt'] = 'txt',
     ) -> str:
+        '''
+        Generates an S3 file path based on the layer, date, file name, and file extension.
+
+        Args:
+            layer (Literal['raw', 'cleansed']): The data layer (e.g., raw or cleansed).
+            date (Optional[str]): The date in 'YYYY-MM-DD' format; defaults to today if not provided.
+            file_name (str | Literal['unknown']): The base name of the file.
+            file_extension (str | Literal['txt']): The file extension.
+
+        Returns:
+            str: The generated S3 file path.
+        '''
         current_date: str = date_.today().strftime('%Y-%m-%d')
 
         s3_file_path: str = (
@@ -36,8 +64,19 @@ class S3Client:
             f'/{layer}_{file_name}_{date or current_date}.{file_extension}'
         )
         return s3_file_path
+
     def upload_json(self, file_path: str, json_like: list[dict]) -> None:
-        """Uploads a JSON-like data structure (list of dictionaries) to a specified S3 path."""
+        '''
+        Uploads a JSON-like data structure (list of dictionaries) to a specified S3 path.
+
+        Args:
+            file_path (str): The destination S3 path.
+            json_like (list[dict]): The JSON-like data structure to upload.
+
+        Raises:
+            S3UploadFailedError: If the upload to S3 fails.
+            Exception: For any other unexpected errors.
+        '''
         body: str = json.dumps(json_like)
         key: str = file_path.removeprefix(f's3://{self._bucket_name}/')
 
@@ -57,9 +96,22 @@ class S3Client:
             logger.error(f'Error uploading JSON data: {e}')
 
     def upload_parquet(
-            self, df: DataFrame, file_path: str, **extra_settings
+        self, df: DataFrame, file_path: str, **extra_settings
     ) -> None:
-        """Convert a dataframe to parquet file and upload it to a specified S3 path."""
+        '''
+        Converts a DataFrame to a Parquet file and uploads it to a specified S3 path.
+
+        Args:
+            df (DataFrame): The DataFrame to be converted and uploaded.
+            file_path (str): The destination S3 path.
+            **extra_settings: Additional settings for the parquet upload.
+
+        Raises:
+            EmptyDataError: If the DataFrame is empty and cannot be uploaded.
+            ClientError: If there is an error with the S3 client during upload.
+            BotoCoreError: If there is an AWS connection or configuration error.
+            Exception: For any other unexpected errors.
+        '''
         if df.empty:
             raise EmptyDataError('The DataFrame is empty and cannot be sent.')
 
@@ -68,7 +120,7 @@ class S3Client:
             logger.info(f'Parquet file uploaded to {file_path}')
 
         except ClientError as e:
-            logger.error(f'S3 Client Error: {e.response['Error']['Message']}')
+            logger.error(f'S3 Client Error: {e.response["Error"]["Message"]}')
 
         except BotoCoreError as e:
             logger.error(f'AWS connection or configuration error: {e}')

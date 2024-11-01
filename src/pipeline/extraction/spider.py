@@ -27,7 +27,25 @@ PARSERS: dict[str, Callable] = {
 
 
 def extract_paths(section: Literal['game', 'movie', 'tv']) -> list[str]:
-    """Extract paths from Metacritic's browse page."""
+    '''
+    Extracts paths for items in a given section from Metacritic's browse page.
+
+    This function retrieves all available pages in the specified section and
+    gathers the URLs of individual item cards, such as games, movies, or TV shows.
+    It uses pagination to ensure that paths from multiple pages are collected.
+
+    Args:
+        section (Literal['game', 'movie', 'tv']): The category of items to
+            extract paths for, such as 'game', 'movie', or 'tv'.
+
+    Returns:
+        list[str]: A list of URL paths for each item in the specified section.
+
+    Example:
+        To extract game paths from Metacritic's game section:
+
+            game_paths = extract_paths('game')
+    '''
     url: str = f'{BASE_URL}/browse/{section}/'
     page: HTMLParser = get_html_parser(url=url)
 
@@ -39,15 +57,28 @@ def extract_paths(section: Literal['game', 'movie', 'tv']) -> list[str]:
         for response in fetch(
             base_url=url, request_strategy=request_strategy, collection='paths'
         )
-        for node in (get_html_parser(response=response).css(SELECTORS['cards']))
+        for node in get_html_parser(response=response).css(SELECTORS['cards'])
     ]
 
     return paths
 
 
-def metacritic_spider(section: Literal['movie', 'game']) -> None:
+def extract_data(section: Literal['movie', 'game'], paths: list[str]) -> None:
+    '''
+    Collects and stores JSON data from Metacritic for items in the specified section.
+
+    This function fetches the content for each item in the paths list from Metacritic,
+    parses the data using the appropriate parser, and then uploads the parsed data
+    as a JSON file to an S3 bucket.
+
+    Args:
+        section (Literal['movie', 'game']): The category of items to scrape,
+            either 'movie' or 'game'.
+        paths (list[str]): A list of URL paths to fetch data for within the specified
+            section.
+    '''
     responses: Generator[HTTPResponse, None, None] = fetch(
-        paths=extract_paths(section=section),
+        paths=paths,
         collection='contents',
         base_url=BASE_URL,
     )

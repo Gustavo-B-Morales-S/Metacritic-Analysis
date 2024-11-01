@@ -22,7 +22,18 @@ SELECTORS: dict[str, str] = {
 }
 
 def parse_movies_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str | int]]:
-    """Parses Metacritic data from an iterable of HTTP responses."""
+    '''
+    Parses Metacritic movies data from an iterable of HTTP response documents.
+
+    Args:
+        response_documents (Iterable[HTTPResponse]): A collection of HTTP response
+            documents containing HTML content to be parsed.
+
+    Returns:
+        list[dict[str, str | int]]: A list of dictionaries where each dictionary
+        represents a game and its attributes, such as name, platform, genre, scores,
+        and ratings.
+    '''
     logger.info('Starting processing responses')
     json_like: list[dict[str, str | int]] = []
 
@@ -32,7 +43,7 @@ def parse_movies_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str |
 
         try:
             for detail in tree.css(SELECTORS['details']):
-                contents = detail.css('span')
+                contents: list[Node] = detail.css('span')
 
                 label: str = contents[0].text()
                 content: str = contents[1].text()
@@ -55,7 +66,7 @@ def parse_movies_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str |
             awards: Node = tree.css(SELECTORS['awards'])
 
             json_like.append({
-                'movie': movie.text(),
+                'name': movie.text(),
                 'genre': genre.text().strip(),
                 'awards': len(awards),
                 'must_see': 1 if bool(must_see) else 0,

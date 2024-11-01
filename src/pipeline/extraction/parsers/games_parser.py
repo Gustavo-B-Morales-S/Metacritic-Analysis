@@ -23,16 +23,25 @@ SELECTORS: dict[str, str] = {
     'must_play': '.c-productScoreInfo_must',
 }
 
-def parse_games_data(
-        response_documents: Iterable[HTTPResponse]
-) -> list[dict[str, str | int]]:
-    """Parses Metacritic data from an iterable of HTTP responses."""
+def parse_games_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str | int]]:
+    '''
+    Parses Metacritic game data from an iterable of HTTP response documents.
+
+    Args:
+        response_documents (Iterable[HTTPResponse]): A collection of HTTP response
+            documents containing HTML content to be parsed.
+
+    Returns:
+        list[dict[str, str | int]]: A list of dictionaries where each dictionary
+        represents a game and its attributes, such as name, platform, genre, scores,
+        and ratings.
+    '''
     logger.info('Starting processing responses')
     json_like: list[dict[str, str | int]] = []
 
-    for document in response_documents:
-        logger.info(f'Processing response from {document.url}.')
-        tree = HTMLParser(document.content)
+    for response in responses:
+        logger.info(f'Processing response from {response.url}.')
+        tree: HTMLParser = response.content
 
         try:
             critic_ratings, user_ratings = tree.css(SELECTORS['reviews_and_ratings'])

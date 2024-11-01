@@ -17,18 +17,51 @@ from src.core.settings import mongodb_settings
 
 
 class MongoDBClient:
+    '''
+    A client for connecting to a MongoDB instance and managing database operations.
+
+    Args:
+        host (str): The MongoDB server host.
+        port (int): The MongoDB server port.
+        database (str): The MongoDB database name.
+
+    Attributes:
+        host (str): The MongoDB server host.
+        port (int): The MongoDB server port.
+        database (str): The MongoDB database name.
+    '''
+
     def __init__(
         self,
         host: str = mongodb_settings.host,
         port: int = mongodb_settings.port,
         database: str = mongodb_settings.database,
     ) -> None:
+        '''
+        Initializes the MongoDBClient instance with the given server host, port, and database name.
+
+        Args:
+            host (str): The MongoDB server host.
+            port (int): The MongoDB server port.
+            database (str): The MongoDB database name.
+        '''
         self.host = host
         self.port = port
         self.database = database
 
     @cached_property
     def _client(self) -> MongoClient:
+        '''
+        Establishes a connection to the MongoDB server and returns the client.
+
+        Returns:
+            MongoClient: The MongoDB client.
+
+        Raises:
+            ServerSelectionTimeoutError: If the server could not be reached in time.
+            PyMongoError: For general MongoDB-related errors.
+            Exception: For any other unexpected errors.
+        '''
         try:
             client: MongoClient = MongoClient(self.host, self.port, connect=True)
             logger.info(
@@ -48,11 +81,26 @@ class MongoDBClient:
 
     @cached_property
     def _database(self) -> Database:
+        '''
+        Provides access to the specified MongoDB database.
+
+        Returns:
+            Database: The MongoDB database instance.
+        '''
         return self._client[self.database]
 
     @contextmanager
     def get_session(self) -> Generator[ClientSession, None, None]:
-        """Context manager for MongoDB session handling."""
+        '''
+        Context manager for MongoDB session handling.
+
+        Yields:
+            ClientSession: The MongoDB client session.
+
+        Usage:
+            Use this method to ensure that operations within the context are
+            performed within the same session for causal consistency.
+        '''
         session: ClientSession = self._client.start_session(causal_consistency=True)
 
         try:
@@ -64,7 +112,16 @@ class MongoDBClient:
     def insert_document(
         self, document: HTTPResponse, collection: Literal['paths', 'contents']
     ) -> None:
-        """Insert a document into a specific collection with session management."""
+        '''
+        Inserts a document into a specified collection within a MongoDB session.
+
+        Args:
+            document (HTTPResponse): The document to insert, as an HTTPResponse object.
+            collection (Literal['paths', 'contents']): The name of the collection to insert the document into.
+
+        Raises:
+            PyMongoError: If an error occurs during the document insertion.
+        '''
         try:
             with self.get_session() as session:
                 self._database[collection].insert_one(
@@ -78,7 +135,18 @@ class MongoDBClient:
     def get_all_documents(
         self, collection: Literal['paths', 'contents']
     ) -> Generator[HTTPResponse, None, None]:
-        """Retrieve all documents from a specific collection."""
+        '''
+        Retrieves all documents from a specified collection.
+
+        Args:
+            collection (Literal['paths', 'contents']): The name of the collection to retrieve documents from.
+
+        Yields:
+            HTTPResponse: Each document from the collection, converted into an HTTPResponse object.
+
+        Raises:
+            PyMongoError: If an error occurs during the document retrieval.
+        '''
         try:
             with self.get_session() as session:
                 documents: Cursor = self._database[collection].find(
@@ -93,7 +161,12 @@ class MongoDBClient:
             raise
 
     def drop_all_collections(self) -> None:
-        """Drop all collections in the database"""
+        '''
+        Drops all collections in the current database.
+
+        Raises:
+            PyMongoError: If an error occurs during the collection drop process.
+        '''
         try:
             with self.get_session() as session:
                 for collection in self._database.list_collection_names(
@@ -107,7 +180,12 @@ class MongoDBClient:
             raise
 
     def close_connection(self) -> None:
-        """Close the MongoDB client connection."""
+        '''
+        Closes the MongoDB client connection.
+
+        Raises:
+            PyMongoError: If an error occurs while closing the connection.
+        '''
         try:
             self._client.close()
             logger.info('MongoDB connection closed.')
