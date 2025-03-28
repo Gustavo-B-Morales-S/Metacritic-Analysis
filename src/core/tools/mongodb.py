@@ -2,8 +2,9 @@
 from contextlib import contextmanager
 from functools import cached_property
 from typing import Generator, Literal
+from urllib.parse import quote_plus
 
-# Third Party Libraries
+# Third-Party Libraries
 from loguru import logger
 from pymongo import MongoClient
 from pymongo.client_session import ClientSession
@@ -17,53 +18,50 @@ from src.core.settings import mongodb_settings
 
 
 class MongoDBClient:
-    '''
+    """
     A client for connecting to a MongoDB instance and managing database operations.
-
-    Args:
-        host (str): The MongoDB server host.
-        port (int): The MongoDB server port.
-        database (str): The MongoDB database name.
-
-    Attributes:
-        host (str): The MongoDB server host.
-        port (int): The MongoDB server port.
-        database (str): The MongoDB database name.
-    '''
+    """
 
     def __init__(
         self,
         host: str = mongodb_settings.host,
         port: int = mongodb_settings.port,
         database: str = mongodb_settings.database,
+        username: str | None = mongodb_settings.username,
+        password: str | None = mongodb_settings.password,
+        auth_source: str = mongodb_settings.auth_source,
     ) -> None:
-        '''
-        Initializes the MongoDBClient instance with the given server host, port, and database name.
-
-        Args:
-            host (str): The MongoDB server host.
-            port (int): The MongoDB server port.
-            database (str): The MongoDB database name.
-        '''
+        """
+        Initializes the MongoDBClient instance with connection parameters.
+        """
         self.host = host
         self.port = port
         self.database = database
+        self.username = username
+        self.password = password
+        self.auth_source = auth_source
 
     @cached_property
     def _client(self) -> MongoClient:
-        '''
-        Establishes a connection to the MongoDB server and returns the client.
-
-        Returns:
-            MongoClient: The MongoDB client.
-
-        Raises:
-            ServerSelectionTimeoutError: If the server could not be reached in time.
-            PyMongoError: For general MongoDB-related errors.
-            Exception: For any other unexpected errors.
-        '''
+        """
+        Establishes a secure connection to the MongoDB server.
+        """
         try:
-            client: MongoClient = MongoClient(self.host, self.port, connect=True)
+            if self.username and self.password:
+                username: str = quote_plus(self.username)
+                password: str = quote_plus(self.password)
+
+                connection_uri: str = (
+                    f"mongodb://{username}:{password}@{self.host}:{self.port}/"
+                    f"?authSource={self.auth_source}"
+                )
+                client = MongoClient(
+                    connection_uri,
+                    connect=True,
+                    serverSelectionTimeoutMS=5000
+                )
+
+            client.admin.command('ping')
             logger.info(
                 f'Connected to MongoDB at {self.host}:{self.port}/{self.database}'
             )
@@ -81,17 +79,17 @@ class MongoDBClient:
 
     @cached_property
     def _database(self) -> Database:
-        '''
+        """
         Provides access to the specified MongoDB database.
 
         Returns:
             Database: The MongoDB database instance.
-        '''
+        """
         return self._client[self.database]
 
     @contextmanager
     def get_session(self) -> Generator[ClientSession, None, None]:
-        '''
+        """
         Context manager for MongoDB session handling.
 
         Yields:
@@ -100,7 +98,7 @@ class MongoDBClient:
         Usage:
             Use this method to ensure that operations within the context are
             performed within the same session for causal consistency.
-        '''
+        """
         session: ClientSession = self._client.start_session(causal_consistency=True)
 
         try:
@@ -112,7 +110,7 @@ class MongoDBClient:
     def insert_document(
         self, document: HTTPResponse, collection: Literal['paths', 'contents']
     ) -> None:
-        '''
+        """
         Inserts a document into a specified collection within a MongoDB session.
 
         Args:
@@ -121,7 +119,7 @@ class MongoDBClient:
 
         Raises:
             PyMongoError: If an error occurs during the document insertion.
-        '''
+        """
         try:
             with self.get_session() as session:
                 self._database[collection].insert_one(
@@ -135,7 +133,7 @@ class MongoDBClient:
     def get_all_documents(
         self, collection: Literal['paths', 'contents']
     ) -> Generator[HTTPResponse, None, None]:
-        '''
+        """
         Retrieves all documents from a specified collection.
 
         Args:
@@ -146,7 +144,7 @@ class MongoDBClient:
 
         Raises:
             PyMongoError: If an error occurs during the document retrieval.
-        '''
+        """
         try:
             with self.get_session() as session:
                 documents: Cursor = self._database[collection].find(
@@ -161,12 +159,12 @@ class MongoDBClient:
             raise
 
     def drop_all_collections(self) -> None:
-        '''
+        """
         Drops all collections in the current database.
 
         Raises:
             PyMongoError: If an error occurs during the collection drop process.
-        '''
+        """
         try:
             with self.get_session() as session:
                 for collection in self._database.list_collection_names(
@@ -180,12 +178,12 @@ class MongoDBClient:
             raise
 
     def close_connection(self) -> None:
-        '''
+        """
         Closes the MongoDB client connection.
 
         Raises:
             PyMongoError: If an error occurs while closing the connection.
-        '''
+        """
         try:
             self._client.close()
             logger.info('MongoDB connection closed.')

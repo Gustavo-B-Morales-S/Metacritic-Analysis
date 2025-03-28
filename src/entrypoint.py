@@ -1,7 +1,7 @@
 # Native Libraries
 from typing import Generator, Iterable, List, Literal
 
-# Thirdy-Party Libraries
+# Third-Party Libraries
 from trio import run
 
 # Local Modules

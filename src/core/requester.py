@@ -1,12 +1,12 @@
-# Native Libraries
+# Standard Library Imports
+from typing import Callable, Generator, Iterable
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Callable, Generator, Iterable
 
-# Third-Party Libraries
+# Third-Party Imports
 from httpx import AsyncClient, HTTPStatusError, Limits, RequestError, Response
-from loguru import logger
 from trio import Semaphore, open_nursery, sleep
+from loguru import logger
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -14,36 +14,25 @@ from tenacity import (
     wait_exponential,
 )
 
-# Local Modules
-from src.core.agents import get_random_user_agent
-from src.core.contracts import HTTPResponse, RequestContext
+# Local Imports
 from src.core.settings import ClientSettings, default_settings
+from src.core.contracts import HTTPResponse, RequestContext
+from src.core.agents import get_random_user_agent
 from src.core.tools.mongodb import mongo_client
 
 
 class RateLimitedClient(AsyncClient):
-    '''
-    An asynchronous HTTP client with rate limiting, designed for controlled requests.
+    """Asynchronous HTTP client with built-in rate limiting.
+
+    Extends httpx.AsyncClient to add rate limiting and automatic User-Agent rotation.
 
     Args:
-        settings (ClientSettings): Settings for configuring the client instance.
-        kwargs: Additional arguments to customize the AsyncClient.
+        settings (ClientSettings): Configuration settings for the client
+        **kwargs: Additional arguments passed to AsyncClient
+    """
 
-    Attributes:
-        _interval (float): The time interval to wait between requests for rate limiting.
-    '''
-
-    def __init__(
-        self, settings: ClientSettings = default_settings, **kwargs
-    ) -> None:
-        '''
-        Initializes an async HTTP client with rate limiting and custom settings.
-
-        Args:
-            settings (ClientSettings): Client configuration settings, including
-                rate limiting parameters.
-            kwargs: Additional parameters for the HTTP client.
-        '''
+    def __init__(self, settings: ClientSettings = default_settings, **kwargs) -> None:
+        """Initialize with rate limiting settings."""
         super().__init__(
             limits=Limits(max_connections=settings.max_connections),
             follow_redirects=settings.follow_redirects,
@@ -54,63 +43,51 @@ class RateLimitedClient(AsyncClient):
 
     @wraps(AsyncClient.get)
     async def get(self, url: str, **kwargs) -> Response:
-        '''
-        Performs a GET request, applying rate limiting and setting a user agent.
+        """Send GET request with rate limiting and random User-Agent.
 
         Args:
-            url (str): The URL to send the GET request to.
-            kwargs: Optional additional arguments for the GET request.
+            url: Target URL
+            **kwargs: Additional request parameters
 
         Returns:
-            Response: The HTTP response object.
-        '''
+            httpx.Response: The HTTP response
+        """
         kwargs.setdefault('headers', {})['User-Agent'] = get_random_user_agent()
         await sleep(self._interval)
         return await super().get(url=url, **kwargs)
 
 
 class RequestStrategy(ABC):
-    '''
-    Abstract base class defining a strategy for handling HTTP requests.
-
-    Attributes:
-        context (RequestContext): The request context containing base URL and path details.
-    '''
+    """Abstract base class for HTTP request strategies."""
 
     context: RequestContext
 
     @abstractmethod
-    async def fetch(
-        self, context: RequestContext
-    ) -> Generator[HTTPResponse, None, None]:
-        '''
-        Fetches data based on the implemented strategy.
+    async def fetch(self, context: RequestContext) -> Generator[HTTPResponse, None, None]:
+        """Fetch data according to the implemented strategy.
 
         Args:
-            context (RequestContext): The context with the necessary data for requests.
+            context: Request configuration context
 
         Yields:
-            HTTPResponse: Parsed HTTP response data.
-        '''
+            HTTPResponse objects with parsed data
+        """
         pass
 
     async def _send_requests(self, paths: Iterable[str] = None) -> None:
-        '''
-        Sends asynchronous requests, managed with rate limiting and concurrency.
+        """Send batch of requests with rate limiting and concurrency control.
 
         Args:
-            paths (Iterable[str], optional): Specific paths for the requests. Defaults
-                to None, in which case it uses context paths.
-        '''
-        logger.info(f'Sending {len(paths or self.context.paths)} requests.')
+            paths: Optional specific paths to request (defaults to context.paths)
+        """
+        target_paths = paths or self.context.paths
+        logger.info(f'Sending {len(target_paths)} requests')
 
         async with RateLimitedClient(base_url=self.context.base_url) as client:
             async with open_nursery() as nursery:
-                semaphore: Semaphore = Semaphore(
-                    default_settings.max_concurrent_requests
-                )
+                semaphore = Semaphore(default_settings.max_concurrent_requests)
 
-                for path in paths or self.context.paths:
+                for path in target_paths:
                     nursery.start_soon(
                         self._process_request, client, semaphore, path
                     )
@@ -123,92 +100,72 @@ class RequestStrategy(ABC):
     async def _process_request(
         self, client: RateLimitedClient, semaphore: Semaphore, path: str
     ) -> None:
-        '''
-        Processes a single HTTP request within rate limits, with retries on failure.
+        """Process single request with retry logic.
 
         Args:
-            client (RateLimitedClient): The rate-limited client for making requests.
-            semaphore (Semaphore): Concurrency control semaphore.
-            path (str): The specific request path.
-        '''
+            client: Configured HTTP client
+            semaphore: Concurrency control
+            path: Target path for request
+        """
         async with semaphore:
-            response: Response = await client.get(path)
+            response = await client.get(path)
             await self._process_response(response)
 
     async def _process_response(self, response: Response) -> None:
-        '''
-        Processes and stores the HTTP response in a MongoDB collection.
+        """Process and store response in MongoDB.
 
         Args:
-            response (Response): The HTTP response to process and store.
-        '''
-        logger.info(
-            f'Received response {response.status_code} from: {response.url}.'
-        )
+            response: HTTP response to process
+        """
+        logger.info(f'Received {response.status_code} from: {response.url}')
+
         mongo_client.insert_document(
             document=HTTPResponse(
                 status_code=response.status_code,
                 content=response.text,
-                url=response.url,
+                url=str(response.url),
             ),
             collection=self.context.collection,
         )
 
 
 class SimpleRequestStrategy(RequestStrategy):
-    '''
-    A simple request strategy that fetches all URLs defined in the provided context.
-    '''
+    """Strategy for simple sequential requests."""
 
-    async def fetch(
-        self, context: RequestContext
-    ) -> Generator[HTTPResponse, None, None]:
-        '''
-        Executes fetch using the simple request strategy.
+    async def fetch(self, context: RequestContext) -> Generator[HTTPResponse, None, None]:
+        """Fetch all URLs in context sequentially.
 
         Args:
-            context (RequestContext): The context with URLs and settings for requests.
+            context: Request configuration
 
         Yields:
-            HTTPResponse: Parsed HTTP response data.
-        '''
+            All documents from the MongoDB collection
+        """
         self.context = context
         await self._send_requests()
-
         return mongo_client.get_all_documents(context.collection)
 
 
 class PaginatedRequestStrategy(RequestStrategy):
-    '''
-    A paginated request strategy that fetches multiple pages of data from specified paths.
-
-    Args:
-        number_of_pages (Callable[[str], int] | int): The number of pages to request,
-            or a function to determine page count dynamically.
-    '''
+    """Strategy for paginated API requests."""
 
     def __init__(self, number_of_pages: Callable[[str], int] | int) -> None:
-        '''
-        Initializes the strategy with a fixed or dynamically calculated number of pages.
+        """Initialize with page count configuration.
 
         Args:
-            number_of_pages (Callable[[str], int] | int): Number of pages to request
-                per path, or a function to calculate this value.
-        '''
+            number_of_pages: Either fixed number or callable that returns page count
+        """
         self._number_of_pages = number_of_pages
 
-    async def fetch(
-        self, context: RequestContext
-    ) -> Generator[HTTPResponse, None, None]:
-        '''
-        Executes fetch with pagination over all paths in the request context.
+    async def fetch(self, context: RequestContext) -> Generator[HTTPResponse, None, None]:
+        """Fetch all pages for each path in context.
 
         Args:
-            context (RequestContext): The request context with base URL and paths.
+            context: Request configuration
 
         Yields:
-            HTTPResponse: Parsed HTTP response data.
-        '''
+            All documents from the MongoDB collection
+        """
         self.context = context
 
         for path in context.paths:
@@ -217,30 +174,24 @@ class PaginatedRequestStrategy(RequestStrategy):
         return mongo_client.get_all_documents(context.collection)
 
     async def _paginate(self, path: str) -> None:
-        '''
-        Paginates requests over the specified path by generating URLs for each page.
+        """Generate and request all pages for a given path.
 
         Args:
-            path (str): The base path for paginated requests.
-        '''
-        number_of_pages: int = await self._get_number_of_pages(path)
-
-        paths: list[str] = [
-            f'{path}?page={page}' for page in range(1, number_of_pages + 1)
-        ]
+            path: Base path to paginate
+        """
+        number_of_pages = await self._get_number_of_pages(path)
+        paths = [f'{path}?page={page}' for page in range(1, number_of_pages + 1)]
         await self._send_requests(paths)
 
     async def _get_number_of_pages(self, path: str) -> int:
-        '''
-        Determines the number of pages to request for a specific path.
+        """Determine number of pages to request.
 
         Args:
-            path (str): The path to determine pagination for.
+            path: Path to check
 
         Returns:
-            int: The number of pages to request.
-        '''
+            Number of pages to request
+        """
         if callable(self._number_of_pages):
             return await self._number_of_pages(path)
-
         return self._number_of_pages

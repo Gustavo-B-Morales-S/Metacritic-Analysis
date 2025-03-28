@@ -1,9 +1,9 @@
-# Thirdy-Party Libraries
+# Native Libraries
 from typing import Iterable
 
-# Thirdy-Party Libraries
-from loguru import logger
+# Third-Party Libraries
 from selectolax.parser import HTMLParser, Node
+from loguru import logger
 
 # Local Modules
 from src.core.tools.mongodb import HTTPResponse
@@ -23,8 +23,9 @@ SELECTORS: dict[str, str] = {
     'must_play': '.c-productScoreInfo_must',
 }
 
+
 def parse_games_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str | int]]:
-    '''
+    """
     Parses Metacritic game data from an iterable of HTTP response documents.
 
     Args:
@@ -35,8 +36,8 @@ def parse_games_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str | 
         list[dict[str, str | int]]: A list of dictionaries where each dictionary
         represents a game and its attributes, such as name, platform, genre, scores,
         and ratings.
-    '''
-    logger.info('Starting processing responses')
+    """
+    logger.info('Starting response processing')
     json_like: list[dict[str, str | int]] = []
 
     for response in responses:

@@ -1,9 +1,9 @@
 # Native Libraries
 from typing import Iterable
 
-# Thirdy-Party Libraries
-from loguru import logger
+# Third-Party Libraries
 from selectolax.parser import HTMLParser, Node
+from loguru import logger
 
 # Local Modules
 from src.core.contracts import HTTPResponse
@@ -21,8 +21,9 @@ SELECTORS: dict[str, str] = {
     'details': '.c-movieDetails_sectionContainer',
 }
 
+
 def parse_movies_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str | int]]:
-    '''
+    """
     Parses Metacritic movies data from an iterable of HTTP response documents.
 
     Args:
@@ -31,15 +32,18 @@ def parse_movies_data(responses: Iterable[HTTPResponse]) -> list[dict[str, str |
 
     Returns:
         list[dict[str, str | int]]: A list of dictionaries where each dictionary
-        represents a game and its attributes, such as name, platform, genre, scores,
+        represents a movie and its attributes, such as genre, release date, scores,
         and ratings.
-    '''
-    logger.info('Starting processing responses')
+    """
+    logger.info('Starting response processing')
     json_like: list[dict[str, str | int]] = []
 
     for response in responses:
         logger.info(f'Processing response from {response.url}.')
         tree: HTMLParser = HTMLParser(response.content)
+
+        # TODO
+        # Do a decent job of handling content variability
 
         try:
             for detail in tree.css(SELECTORS['details']):

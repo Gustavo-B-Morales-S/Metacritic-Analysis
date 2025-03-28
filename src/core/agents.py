@@ -4,8 +4,9 @@ from functools import cached_property
 from time import time
 from typing import Callable, Iterable
 
-# Thirdy Party Libraries
+# Third-Party Libraries
 from ua_parser.user_agent_parser import Parse
+
 
 user_agents: list[str] = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.35',
@@ -85,8 +86,9 @@ user_agents: list[str] = [
     'Mozilla/5.0 (Android 12; Mobile; Focus) Gecko/20100101 Firefox/114.0',
 ]
 
+
 class UserAgent:
-    '''
+    """
     A class for parsing and handling user agent strings.
 
     Args:
@@ -96,61 +98,61 @@ class UserAgent:
         agent (str): The original user agent string.
         parsed_string (dict[str, dict[str, str]]): The parsed user agent details.
         last_used (float): The timestamp of the last use.
-    '''
+    """
 
     def __init__(self, agent: str) -> None:
-        '''
+        """
         Initializes a UserAgent instance and parses the user agent string.
 
         Args:
             agent (str): The user agent string to parse.
-        '''
+        """
         self.agent: str = agent
         self.parsed_string: dict[str, dict[str, str]] = Parse(agent)
         self.last_used: float = time()
 
     @cached_property
     def browser(self) -> str:
-        '''
+        """
         Retrieves the browser family parsed from the user agent string.
 
         Returns:
             str: The browser family name.
-        '''
+        """
         return self.parsed_string['user_agent']['family']
 
     @cached_property
     def browser_version(self) -> int:
-        '''
+        """
         Retrieves the browser's major version as an integer.
 
         Returns:
             int: The major version of the browser.
-        '''
+        """
         return int(self.parsed_string['user_agent']['major'])
 
     @cached_property
     def os(self) -> str:
-        '''
+        """
         Retrieves the operating system family parsed from the user agent string.
 
         Returns:
             str: The operating system family name.
-        '''
+        """
         return self.parsed_string['os']['family']
 
     def __str__(self) -> str:
-        '''
+        """
         Returns the original user agent string.
 
         Returns:
             str: The original user agent string.
-        '''
+        """
         return self.agent
 
 
 class Rotator:
-    '''
+    """
     A rotator for managing and selecting user agents based on weighted attributes.
 
     Args:
@@ -158,19 +160,19 @@ class Rotator:
 
     Attributes:
         user_agents (list[UserAgent]): A list of UserAgent instances created from the provided strings.
-    '''
+    """
 
     def __init__(self, user_agents: Iterable[str]) -> None:
-        '''
+        """
         Initializes the Rotator instance with a list of user agent strings.
 
         Args:
             user_agents (Iterable[str]): A list of user agent strings to rotate through.
-        '''
+        """
         self.user_agents: list[UserAgent] = [UserAgent(ua) for ua in user_agents]
 
     def weigh_user_agent(self, user_agent: UserAgent) -> int:
-        '''
+        """
         Calculates a weight for a user agent based on usage frequency, browser, OS, and version.
 
         Args:
@@ -178,7 +180,7 @@ class Rotator:
 
         Returns:
             int: The calculated weight for the user agent.
-        '''
+        """
         weight: int = 1000
 
         browser_weights: dict[str, int] = {
@@ -209,12 +211,12 @@ class Rotator:
         return weight
 
     def get(self) -> str:
-        '''
+        """
         Selects a user agent string based on calculated weights.
 
         Returns:
             str: The selected user agent string.
-        '''
+        """
         user_agent_weights: list[int] = [
             self.weigh_user_agent(user_agent) for user_agent in self.user_agents
         ]
