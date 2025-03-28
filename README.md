@@ -21,30 +21,49 @@
 
 ```plaintext
 .
-├── docker-compose.yml               # Docker Compose for services
-├── Dockerfile                       # Dockerfile for image build
-├── poetry.lock                      # Poetry lock file
+├── LICENSE.txt                      # License information
+├── docker-compose.yml               # Docker Compose for managing services
+├── Dockerfile                       # Dockerfile for building the project image
+├── .dockerignore                    # Docker ignore file to exclude from Docker image build
+├── .gitignore                       # Git ignore file to exclude files from version control
+├── poetry.lock                      # Poetry lock file for dependency management
 ├── pyproject.toml                   # Poetry configuration file
+├── python_version                   # Specifies the Python version used in the project
 ├── README.md                        # Project documentation
-├── src/                             # Source files
-│   ├── core/                        # Core modules and configurations
-│   │   ├── agents.py                # User Agent Handling
+├── template.env                     # Environment template for variables
+├── .pre-commit-config.yaml          # Pre-commit configuration file for Git hooks
+├── app/
+│   ├── analysis.py                  # Data analysis script
+│   └── queries.py                   # Queries for database or other data sources
+├── src/
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── agents.py                # User Agent handling for web requests
+│   │   ├── agents.py                # User Agent handling for web requests
 │   │   ├── contracts.py             # Data models and interfaces
-│   │   ├── requester.py             # Request handling
-│   │   ├── settings.py              # Core settings
-│   │   └── tools/                   # Utilities for MongoDB and S3
-│   │       ├── mongodb.py
-│   │       └── s3.py
-│   ├── entrypoint.py                # Main entrypoint for pipeline
-│   ├── pipeline/                    # Pipeline modules
-│   │   ├── extraction/              # Extraction and parsing of data
-│   │   │   ├── spider.py
-│   │   │   └── parsers/
-│   │   │       ├── games_parser.py
-│   │   │       ├── movies_parser.py
-│   │   └── transformation/          # Data cleansing functions
-│   │       └── data_cleansing.py
-└── template.env                     # Environment template for variables
+│   │   ├── requester.py             # Request handling logic
+│   │   ├── settings.py              # Core settings and configuration
+│   │   └── tools/
+│   │       ├── __init__.py
+│   │       ├── mongodb.py           # MongoDB utility functions
+│   │       └── s3.py                # S3 utility functions for storage
+│   ├── entrypoint.py                # Main entry point for the pipeline
+│   ├── __init__.py
+│   └── pipeline/
+│       ├── extraction/
+│       │   ├── __init__.py
+│       │   ├── parsers/
+│       │   │   ├── games_parser.py  # Parser for games data
+│       │   │   ├── movies_parser.py # Parser for movies data
+│       │   │   └── utils.py         # Utility functions for parsers
+│       │   └── spider.py            # Main spider for scraping data
+│       ├── __init__.py
+│       └── transformation/
+│           ├── data_cleansing.py    # Functions for cleaning extracted data
+│           └── __init__.py
+├── tests/
+│   └── test_todo.py                      # Placeholder for tests
+
 ```
 
 ## Prerequisites
@@ -59,6 +78,7 @@
 
 ```bash
 git clone <repository-url>
+
 cd Metacritic-Analysis
 ```
 
@@ -67,12 +87,14 @@ cd Metacritic-Analysis
 Install project dependencies via Poetry, ensuring the `pyproject.toml` configuration is utilized.
 
 ```bash
-poetry install && poetry shell
+poetry install
+
+poetry shell
 ```
 
 ### Step 3: Configure Environment Variables
 
-Create a `.env` file from the `template.env` provided, adding your AWS, MongoDB and Mongo Express credentials:
+Create a `.env` file from the `template.env` provided, adding your AWS, MongoDB and Mongo Express credentials (Example):
 
 ```plaintext
 AWS_ACCESS_KEY_ID=<your-access-key>
