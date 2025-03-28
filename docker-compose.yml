@@ -48,26 +48,25 @@ services:
       - "${MONGODB_EXPRESS_PORT:-8001}:8081"
 
 
+  # app:
+  #   container_name: python-app
+  #   build: .
+  #   restart: unless-stopped
 
-  app:
-    container_name: python-app
-    build: .
-    restart: unless-stopped
+  #   depends_on:
+  #     mongo:
+  #       condition: service_healthy
 
-    depends_on:
-      mongo:
-        condition: service_healthy
+  #   environment:
+  #     MONGODB_HOST: mongo
+  #     MONGODB_DATABASE: ${MONGODB_DATABASE}
+  #     MONGODB_USERNAME: ${MONGODB_USERNAME}
+  #     MONGODB_PASSWORD: ${MONGODB_PASSWORD}
+  #     AWS_REGION: ${AWS_REGION}
+  #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  #     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  #     S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+  #     S3_FOLDER_NAME: ${S3_FOLDER_NAME}
 
-    environment:
-      MONGODB_HOST: mongo
-      MONGODB_DATABASE: ${MONGODB_DATABASE}
-      MONGODB_USERNAME: ${MONGODB_USERNAME}
-      MONGODB_PASSWORD: ${MONGODB_PASSWORD}
-      AWS_REGION: ${AWS_REGION}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
-      S3_FOLDER_NAME: ${S3_FOLDER_NAME}
-      
-    volumes:
-      - .:/app
+  #   volumes:
+  #     - .:/app
